@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  passwordHash  String
+  firstName     String   @default("")
+  lastName      String   @default("")
+  phone         String?
+  refreshToken  String?  @unique
+  createdAt     DateTime @default(now())
+  campaigns     Campaign[]
+  savedAds      SavedAd[]
+}
+
+model Campaign {
+  id            Int        @id @default(autoincrement())
+  userId        Int
+  originalText  String
+  originalUrl   String?
+  nicheDetected String?
+  createdAt     DateTime   @default(now())
+  analyses      Analysis[]
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competitors Competitor[]
+}
+
+model Analysis {
+  id                  Int      @id @default(autoincrement())
+  campaignId          Int
+  summary             String
+  clarityScore        Int
+  persuasionScore     Int
+  differentiationScore Int
+  ctaScore            Int
+  conversionScore     Int
+  recommendations     String
+  optimizedVersion    String
+  createdAt           DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Competitor {
+  id             Int      @id @default(autoincrement())
+  campaignId     Int
+  source         String
+  platform       String
+  advertiserName String
+  title          String?
+  text           String
+  url            String?
+  createdAt      DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model SavedAd {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  platform       String
+  advertiserName String
+  title          String?
+  text           String
+  url            String?
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

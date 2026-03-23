@@ -1,0 +1,17 @@
+{
+  "name": "ai-campaing-analyzer--main",
+  "version": "1.0.0",
+  "description": "Aplicación full‑stack para analizar campañas de marketing con IA, scraping (Puppeteer), cola asíncrona (BullMQ/Redis) y almacenamiento en SQLite/Prisma.",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently -n api,worker,web -c blue,magenta,green \"npm run dev --prefix backend\" \"npm run worker:analysis --prefix backend\" \"npm run dev --prefix frontend\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

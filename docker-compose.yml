@@ -1,0 +1,85 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      # Misma base SQLite para API y worker (volumen compartido)
+      - DATABASE_URL=${DATABASE_URL:-file:/data/app.db}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1d}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - META_AD_LIBRARY_ACCESS_TOKEN=${META_AD_LIBRARY_ACCESS_TOKEN:-}
+      - META_AD_LIBRARY_ENDPOINT=${META_AD_LIBRARY_ENDPOINT:-}
+      - GOOGLE_ADS_TRANSPARENCY_ENDPOINT=${GOOGLE_ADS_TRANSPARENCY_ENDPOINT:-}
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: ["node", "dist/workers/analysis-worker.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-file:/data/app.db}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1d}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - META_AD_LIBRARY_ACCESS_TOKEN=${META_AD_LIBRARY_ACCESS_TOKEN:-}
+      - META_AD_LIBRARY_ENDPOINT=${META_AD_LIBRARY_ENDPOINT:-}
+      - GOOGLE_ADS_TRANSPARENCY_ENDPOINT=${GOOGLE_ADS_TRANSPARENCY_ENDPOINT:-}
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # URL pública del API desde el navegador (no usar hostname interno «backend»)
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:4000/api}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  sqlite-data:
+
